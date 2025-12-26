@@ -49,7 +49,7 @@ async def parsePage(page: zd.Tab, target: SiteParams, timeout=20) -> List[JobDat
             newJobs += 1
 
 
-        logInfo(f"Found {len(foundData)} jobs, of which ({newJobs} new jobs added).")
+        logInfo(f"Found {len(foundData)} data - {newJobs} new jobs added).")
 
         if (newJobs):
             lastFoundTime = loop.time()
@@ -57,11 +57,15 @@ async def parsePage(page: zd.Tab, target: SiteParams, timeout=20) -> List[JobDat
             currentPage, maxPage = await getPagination(page)
 
             if currentPage is not None and maxPage is not None:
-                if currentPage >= maxPage:
-                    logInfo(f"End of pages reached ({currentPage} / {maxPage}).")
+                
+                if currentPage >= target.maxPages:
+                    logInfo(f"Target max pages reached: {target.maxPages}")
+                    break
+                elif currentPage >= maxPage:
+                    logInfo(f"End of pages reached: ({currentPage} / {maxPage})")
                     break
                 else:
-                    logInfo(f"Current Page: {currentPage}")
+                    logInfo(f"Current Page: {currentPage} / {maxPage})")
 
     
             if target.loadMoreSelector:

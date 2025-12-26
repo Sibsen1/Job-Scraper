@@ -11,7 +11,7 @@ def _makeLogger(fn):
     return wrapper
 
 
-logDebug = _makeLogger(logging.debug)
+logDebug = _makeLogger(logging.info)
 logInfo = _makeLogger(logging.info)
 logWarning = _makeLogger(logging.warning)
 logError = _makeLogger(logging.error)

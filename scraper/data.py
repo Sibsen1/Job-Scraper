@@ -31,6 +31,8 @@ class SiteParams:
     dataSelectors: dict  # Each key corresponds to a field in jobData; value is selector 
     jobSelector: str
     loadMoreSelector: str
+
+    maxPages : int
     scroll: bool
     login: bool
     useHeadless: bool
@@ -43,7 +45,7 @@ class SiteParams:
 class JobData:
     id: str                 = field(metadata={'key': 'id'}),
     url: str                = dataField("url", str)
-    name: str               = dataField("name", str)
+    title: str               = dataField("title", str)
     description: str        = dataField("description", str)
     date: str               = dataField("date", str)
     rating: str             = dataField("rating", str)
@@ -101,7 +103,7 @@ def makeJob(raw: dict) -> JobData:
 
     id = getStr("id")
     url = getStr("url")
-    name = getStr("name")
+    title = getStr("title")
     description = getStr("description")
 
     date = parseRelDatetime(getStr("date"))
@@ -125,7 +127,7 @@ def makeJob(raw: dict) -> JobData:
     return JobData(
         id=id,
         url=url,
-        name=name,
+        title=title,
         description=description,
         date=date,
         rating=rating,

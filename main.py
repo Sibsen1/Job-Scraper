@@ -1,8 +1,10 @@
 ﻿import asyncio
+import re
+from typing import List
 from dotenv import load_dotenv
 
 from utils.logger import *
-from scraper.data import SiteParams
+from scraper.data import JobData, SiteParams
 from scraper.run import scrapeTarget
 from utils.s3 import uploadFile
 from utils.storage import saveDataToFile
@@ -23,12 +25,15 @@ jobGroupCodes = {
      "531770282580668423": "Writing",
 }
 
+#targetJobGroups = jobGroupCodes.keys()
+targetJobGroups = ["531770282580668419", "531770282580668418"]
+
 targets = [
     SiteParams( # All job groups:
-        ["https://www.upwork.com/nx/search/jobs/?category2_uid=%s&per_page=50&sort=recency" % ",".join(jobGroupCodes.keys())],
+        ["https://www.upwork.com/nx/search/jobs/?category2_uid=%s&per_page=50&sort=recency" % ",".join(targetJobGroups)],
         {
             "id":                '::data-ev-job-uid',
-            "name":              '[data-test="UpCLineClamp"]',
+            "title":             '[data-test="UpCLineClamp"]',
             "url":               '[data-test="job-tile-title-link UpLink"]::href',
             "description":       '[data-test="UpCLineClamp JobDescription"]',
             "date":              '[data-test="job-pubilshed-date"]>*:last-child',
@@ -44,7 +49,9 @@ targets = [
         },
         jobSelector="article",
         loadMoreSelector='[data-ev-label="pagination_next_page"]',
-        scroll=True,
+
+        maxPages=10,
+        scroll=False,
         login=True, # More data is visible for each job after login
         useHeadless=False # Cloudflare locks us out on headless
     )
@@ -58,13 +65,31 @@ async def main():
     target = targets[0]
 
     result = await scrapeTarget(target)
-    jobs = list(result.values())
+    jobs : List[JobData] = list(result.values())
 
-    if jobs:
-        filename = saveDataToFile(jobs, target)
+    wordBlacklist = ["app dev", "wordpress", "firmware", r"\bai\b", r"\bnft\b", "pplication dev", "app design", "graphic design"]
+    tagBlacklist = ["web de", "graphic design"]
+    
+    wordBlacklistP = [re.compile(p, re.IGNORECASE) for p in wordBlacklist]
+    tagBlacklistP = [re.compile(p, re.IGNORECASE) for p in tagBlacklist]
 
-        uploadFile(filename, f"scrapes/Upwork/{filename}")
-        logInfo(f"Uploaded {len(jobs)} jobs to S3 Bucket.")
+    jobsF = []
+    for j in jobs:
+        if any(re.search(patt, tag) for patt in tagBlacklistP for tag in j.tags):
+            continue
+        
+        fullText = (j.title+"\n"+j.description)
+        if any(re.search(patt, fullText) for patt in wordBlacklistP):
+            continue
+
+        jobsF.append(j)
+    logging.info(f"Filtered out {len(jobs)-len(jobsF)} jobs. Remaining jobs: {len(jobsF)}")
+
+    if jobsF:
+        filename = saveDataToFile(jobsF, target)
+
+       # uploadFile(filename, f"scrapes/Upwork/{filename}")
+        #logInfo(f"Uploaded {len(jobs)} jobs to S3 Bucket.")
     
         #jobsJsonBytes = json.dumps([asdict(j) for j in jobs], indent=2).encode("utf-8")
         #uploadBytes(jobsJsonBytes, f"scrapes/Upwork/data.json", content_type="application/json")

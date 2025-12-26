@@ -84,7 +84,7 @@ async def login(target):
     await asyncio.sleep(0.1)
     await contButt.click();
 
-    async def waitLoginEnd():
+    async def waitLoginEnd(waitForSelector=None):
         loop = asyncio.get_running_loop()
         loginTimeout = loop.time() + 30 # Wait for max 30 sec
 
@@ -94,16 +94,21 @@ async def login(target):
             if loop.time() >= loginTimeout:
                 break
 
+            if waitForSelector and await _page.query_selector(waitForSelector):
+                break
+
         else:
             return True
         return False
 
-    if await waitLoginEnd():
+    securityQuestionSel = '#login_answer:not(:disabled)'
+
+    if await waitLoginEnd(securityQuestionSel):
         logInfo("Finished logging in.")
         return
 
-    secInp = await _page.query_selector('input:not(:disabled)')
-    contButt = await _page.query_selector('.air3-loader-container.auth-growable-flex button')
+    secInp = await _page.query_selector(securityQuestionSel)
+    contButt = await _page.query_selector('#login_control_continue')
 
     if not secInp or not contButt:
         logError("Login timed out.")
